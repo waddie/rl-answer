@@ -1,0 +1,75 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Anagram Finder</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Anagram Finder</h1>
+      <label for="input">Input:</label>
+      <input id="input" v-model="input" />
+      <h2 v-if="anagrams.length === 1">1 matching anagram:</h2>
+      <h2 v-if="anagrams.length > 1">{{ anagrams.length }} matching anagrams:</h2>
+      <ul v-for="word in anagrams" :key="word">
+        <li>{{ word }}</li>
+      </ul>
+      <p v-if="input.length && !anagrams.length">No anagrams found.</p>
+    </div>
+  </body>
+</html>
+
+<script type="module">
+  import { createApp, ref, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+
+  const wordListURL = "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt";
+
+  // 'steak' => 'aekst', 'skate' => 'aekst', 'Keats' => 'aekst', etc.
+  const normalizeWord = (word) =>
+    word
+      .toLowerCase()
+      .replace(/[^\w\d]/g, "")
+      .split("")
+      .sort()
+      .join("");
+
+  // function to look up anagrams of an input word
+  const lookupAnagrams = (inputWord, wordList) => {
+    const normalizedWord = normalizeWord(inputWord);
+    return wordList[normalizedWord] ? wordList[normalizedWord] : [];
+  };
+
+  createApp({
+    setup() {
+      const allWords = ref({});
+      const anagrams = ref([]);
+      const input = ref("");
+
+      // Fetch dictionary and populate allWords
+      onMounted(async () => {
+        const response = await fetch(wordListURL);
+        const words = await response.text();
+        allWords.value = words.split("\n").reduce((dictionary, word) => {
+          const normalizedWord = normalizeWord(word);
+          if (dictionary[normalizedWord]) {
+            dictionary[normalizedWord].push(word);
+          } else {
+            dictionary[normalizedWord] = [word];
+          }
+          return dictionary;
+        }, {});
+      });
+
+      // Update anagrams list when input or allWords changes
+      watch([input, allWords], () => {
+        if (input.value) {
+          anagrams.value = lookupAnagrams(input.value, allWords.value).slice(0, 100);
+        } else {
+          anagrams.value = [];
+        }
+      });
+
+      return { anagrams, input };
+    }
+  }).mount('#app')
+</script>
